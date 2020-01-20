@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class PlayerMovement : MonoBehaviour
 {
-    private bool jump = true;
+    private bool jump = false;
     private int jumpAmount = 1;
     private Rigidbody rb;
     private bool walkable = true;
@@ -18,7 +18,11 @@ public class PlayerMovement : MonoBehaviour
     float timer;
     [SerializeField]
     LayerMask layer;
-
+    [SerializeField]
+    float distance = 0.8f;
+    [SerializeField]
+    Collider col;
+    //Vector3 dirm = new Vector3(0, 0, 0);
 
     void Start()
     {
@@ -27,73 +31,78 @@ public class PlayerMovement : MonoBehaviour
 
     void Update()
     {
-
-        //----------------------------------------------------------animations
-        anim.SetBool("climbing", false);
-        walkable = gameObject.GetComponent<Ladder>().isClimbing();
-        if (Input.GetAxis("Back") > 0.3f)
+        if (!StateMachine.GetCutsene())
         {
-            walkable = false;
-        }
-        if (!walkable)
-        {
-            if (!jump)
+            //anim.SetBool("jump", !jump);
+            //----------------------------------------------------------animations
+            anim.SetBool("climbing", false);
+            walkable = gameObject.GetComponent<Ladder>().isClimbing();
+            if (Input.GetAxis("Back") > 0.3f)
             {
-                speed = speed *0.4f;
+                walkable = false;
+            }
+            if (!walkable)
+            {
+                if (jump)
+                {
+                    Vector3 dir = new Vector3(0, 0, 0);
+                    if (!gameObject.GetComponent<AttackScript>().Locked())
+                    {
+                        Movement();
+                    }
+                    else
+                    {
+                        if (Input.GetAxis("Vertical") != 0)
+                        {
+                            dir += transform.forward * Input.GetAxis("Vertical");
+                        }
+                        if (Input.GetAxis("Horizontal") != 0)
+                        {
+                            dir += transform.right * Input.GetAxis("Horizontal");
+                        }
+                        dir.Normalize();
+                        transform.position += dir * speed * Time.deltaTime;
+                    }
+                    if (Input.GetAxis("Horizontal") != 0 || Input.GetAxis("Vertical") != 0)
+                    {
+                        anim.SetBool("isRunning", true);
+                    }
+                    else
+                    {
+                        anim.SetBool("isRunning", false);
+                        anim.speed = 1;
+                    }
+                }
+                Jump();
             }
             else
             {
-                speed = 5;
-            }
-            if (jump)
-            {
-                if (!gameObject.GetComponent<AttackScript>().Locked())
+                //dirm = cam.transform.forward;
+                jump = false;
+                //dir = transform.forward;
+                anim.SetBool("isRunning", false);
+                anim.SetBool("climbing", true);
+                /*
+                anim.speed = 0;
+
+                if (Input.GetAxis("Vertical") != 0)
                 {
-                    Movement();
-                }
-                else
-                {
-                    Vector3 dir = new Vector3(0, 0, 0);
-                    if (Input.GetAxis("Vertical") != 0)
-                    {
-                        dir += transform.forward * Input.GetAxis("Vertical");
-                    }
-                    if (Input.GetAxis("Horizontal") != 0)
-                    {
-                        dir += transform.right * Input.GetAxis("Horizontal");
-                    }
-                    dir.Normalize();
-                    transform.position += dir * speed * Time.deltaTime;
-                }
-                if (Input.GetAxis("Horizontal") != 0 || Input.GetAxis("Vertical") != 0)
-                {
-                    anim.SetBool("isRunning", true);
-                }
-                else
-                {
-                    anim.SetBool("isRunning", false);
                     anim.speed = 1;
                 }
-                
+                if (Input.GetAxis("Vertical") > 0)
+                {
+                    anim.SetFloat("climbspeed", 1);
+                }
+                if (Input.GetAxis("Vertical") < 0)
+                {
+                    anim.SetFloat("climbspeed", -1);
+                }*/
             }
-            Jump();
-        }
-        else
-        {
-            anim.SetBool("isRunning", false);
-            anim.SetBool("climbing", true);
-            anim.speed = 0;
-            if(Input.GetAxis("Vertical") != 0)
-            {
-                anim.speed = 1;
-            }
-
         }
     }
     void Movement()
     {
         // ---------------------------------------------------------PLayer Movement
-
         Vector3 dir = new Vector3(0, 0, 0);
         if (Input.GetAxis("Vertical") != 0)
         {
@@ -104,8 +113,10 @@ public class PlayerMovement : MonoBehaviour
             dir += cam.transform.right * Input.GetAxis("Horizontal");
         }
         dir.Normalize();
-        transform.position += dir * speed * Time.deltaTime;
+        //dirm = Vector3.Lerp(dirm, dir, Time.deltaTime);
+
         transform.LookAt(transform.position + dir);
+        transform.position += dir * speed * Time.deltaTime;
         if (dir == new Vector3(0, 0, 0))
         {
             timer += Time.deltaTime;
@@ -121,21 +132,27 @@ public class PlayerMovement : MonoBehaviour
             Debug.Log(transform.eulerAngles.y);
         }
     }
-
     void Jump()
     {
-        Debug.DrawRay(transform.position, -transform.up, Color.red);
-        if (Physics.Raycast(transform.position, -transform.up,2.3f, layer))
+        RaycastHit hit;
+        Debug.DrawLine(transform.position + new Vector3(0, 1, 0) + transform.forward * 0.1f, transform.position + new Vector3(0, 1, 0) + transform.forward * 0.1f - transform.up*distance, Color.red);
+        if (Physics.Raycast(transform.position + new Vector3(0,1,0)+transform.forward*0.06f, -transform.up,out hit, distance, layer))
         {
             Debug.Log("OnGround");
             jump = true;
+            anim.SetBool("jump", false);
+            rb.interpolation = RigidbodyInterpolation.None;
+            
         }
-        else if(jump)
+        else if(jump && !walkable)
         {
+            
+            rb.interpolation = RigidbodyInterpolation.Interpolate;
             Debug.Log("Jump");
             jump = false;
+            anim.SetBool("jump", true);
             anim.SetBool("isRunning", false);
-            rb.AddForce(new Vector3(0, 6f, 0) + transform.forward * 4f, ForceMode.Impulse);
+            rb.AddForce(new Vector3(0, 6f, 0) + transform.forward * 3f, ForceMode.Impulse);
         }
     }
 }

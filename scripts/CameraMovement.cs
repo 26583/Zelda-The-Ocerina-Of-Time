@@ -25,18 +25,21 @@ public class CameraMovement : MonoBehaviour
     // Update is called once per frame
     void LateUpdate()
     {
-        
-        if(Input.GetAxis("Horizontal") != 0)
-            yRotate += Input.GetAxis("Horizontal") * turnspeed;
+        if (!StateMachine.GetCutsene())
+        {
+            if (Input.GetAxis("Horizontal") != 0)
+                yRotate += Input.GetAxis("Horizontal") * turnspeed;
 
-        
-        transform.rotation = Quaternion.Euler(new Vector3(transform.rotation.x, yRotate, transform.rotation.z));
-        //transform.rotation = Quaternion.Lerp(transform.rotation, rotat.rotation, Time.time * 0.1f);
-        transform.position = target.transform.position - transform.forward * distance + new Vector3(0,0.5f,0);
-        RaycastHit hit;
-        
-        if(Physics.Raycast(target.transform.position + new Vector3(0, 0.5f, 0), -transform.forward,out hit, distance,layer)){
-            transform.position = hit.point;
+
+            transform.rotation = Quaternion.Euler(new Vector3(transform.rotation.x, yRotate, transform.rotation.z));
+            //transform.rotation = Quaternion.Lerp(transform.rotation, rotat.rotation, Time.time * 0.1f);
+            transform.position = Vector3.Lerp(transform.position,target.transform.position - transform.forward * distance + new Vector3(0, 1f, 0),Time.deltaTime*10);
+            RaycastHit hit;
+
+            if (Physics.Raycast(target.transform.position + new Vector3(0, 1f, 0), -transform.forward, out hit, distance, layer))
+            {
+                transform.position = hit.point;
+            }
         }
     }
     public void ChangeRot( float rot)

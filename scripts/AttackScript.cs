@@ -13,41 +13,53 @@ public class AttackScript : MonoBehaviour
     [SerializeField]
     Animator anim;
     bool attackeble =true;
+    [SerializeField]
+    GameObject arrowsAim;
+    [SerializeField]
+    GameObject plant;
     // Start is called before the first frame update
     void Start()
     {
         LockOnToTarget(6);
         cam1.SetActive(true);
         cam2.SetActive(false);
+        arrowsAim.SetActive(false);
+        plant.SetActive(false);
     }
 
     // Update is called once per frame
     void Update()
     {
+        LockOnToTarget(6);
         if (Input.GetAxis("L2") > 0.3f)
-        {
-            LockOnToTarget(6);
-            lockedOn = true;
-            cam1.SetActive(false);
-            cam2.SetActive(true);
-        }
-        if (Input.GetAxis("L2") < 0.3f)
-        {
-            lockedOn = false;
-            cam1.SetActive(true);
-            cam2.SetActive(false);
-        }
-        if(Input.GetAxis("Xbutton") > 0.3f && lockedOn && attackeble)
-        {
-            Debug.Log("Attack Babie met IONEUS");
-            anim.SetBool("attack", true);
-            StartCoroutine(AttackTime());
-        }
+            {
+                
+                lockedOn = true;
+                cam1.SetActive(false);
+                cam2.SetActive(true);
+            }
+            if (Input.GetAxis("L2") < 0.3f)
+            {
+                lockedOn = false;
+                cam1.SetActive(true);
+                cam2.SetActive(false);
+            }
+            if (Input.GetAxis("Xbutton") > 0.3f && lockedOn && attackeble)
+            {
+                //Debug.Log("Attack Babie met IONEUS");
 
-        if (lockedOn) {
-            transform.LookAt(new Vector3(target.transform.position.x, transform.position.y, target.transform.position.z));
-        }
-        
+                StartCoroutine(AttackTime());
+            }
+
+            if (lockedOn && target)
+            {
+                arrowsAim.SetActive(true);
+                transform.LookAt(new Vector3(target.transform.position.x, transform.position.y, target.transform.position.z));
+            }
+            else if (target)
+            {
+                arrowsAim.SetActive(false);
+            }
     }
     void LockOnToTarget(float radius)
     {
@@ -58,6 +70,7 @@ public class AttackScript : MonoBehaviour
             if(hitColliders[i].gameObject.tag == "Enemy")
             {
                 target = hitColliders[i].gameObject;
+                plant.SetActive(true);
             }
         }
     }
@@ -67,10 +80,15 @@ public class AttackScript : MonoBehaviour
     }
     IEnumerator AttackTime()
     {
+        anim.SetBool("attack", true);
         attackeble = false;
         yield return new WaitForSeconds(0.6f);
         anim.SetBool("attack", false);
-        target.GetComponent<Enemy>().Hit();
+        yield return new WaitForSeconds(0.2f);
+        if (target)
+        {
+            target.GetComponent<Enemy>().Hit();
+        }
         attackeble = true;
     }
 }

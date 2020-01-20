@@ -19,6 +19,11 @@ public class Ladder : MonoBehaviour
     GameObject cam;
     [SerializeField]
     GameObject child;
+    [SerializeField]
+    LayerMask layer;
+    [SerializeField]
+    GameObject hips;
+    bool canClimb = true;
     // Start is called before the first frame update
     void Start()
     {
@@ -29,42 +34,69 @@ public class Ladder : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if(insideLadder && !climable)
+        if (!StateMachine.GetCutsene())
         {
-            if(Input.GetAxis("Vertical") == 0)
+            if (insideLadder && !climable)
             {
-                climable = true;
-                //enterStair = true;
+                if (Input.GetAxis("Vertical") <= 0)
+                {
+                    //climable = true;
+                    //enterStair = true;
+                    StartCoroutine(makeClimb());
+                }
             }
+            if (Input.GetAxis("Back") > 0.3f)
+            {
+                insideLadder = false;
+                rb.useGravity = true;
+                StopCoroutine(TurnToTrap(0.7f));
+            }
+            if (insideLadder && climable && canClimb)
+            {
+                transform.position += new Vector3(0, Input.GetAxis("Vertical"), 0) * 3 * Time.deltaTime;
+                anim.speed = 0;
+
+                if (Input.GetAxis("Vertical") != 0)
+                {
+                    anim.speed = 1;
+                }
+                if (Input.GetAxis("Vertical") > 0)
+                {
+                    anim.SetFloat("climbspeed", 1);
+                }
+                if (Input.GetAxis("Vertical") < 0)
+                {
+                    anim.SetFloat("climbspeed", -1);
+                }
+            }
+            else
+            {
+                anim.speed = 1;
+            }
+            if (!insideLadder)
+            {
+                anim.SetBool("climbing", false);
+            }
+            RaycastHit hit;
+            if (Physics.Raycast(new Vector3(transform.position.x, transform.position.y + 1f, transform.position.z), transform.forward, out hit, 1f, layer) && insideLadder)
+            {
+
+                enterStair = true;
+                
+            }
+            else if (insideLadder && enterStair)
+            {
+                Debug.Log("lerp");
+                climable = false;
+                canClimb = false;
+                //insideLadder = false;
+                enterStair = false;
+                StartCoroutine(GoUpTrep());
+                anim.SetBool("hanging", true);
+            }
+            Debug.DrawLine(new Vector3(transform.position.x, transform.position.y + 1f, transform.position.z), new Vector3(transform.position.x, transform.position.y + 1f, transform.position.z) + transform.forward * 1f);
+            Debug.Log(insideLadder);
         }
-        if (Input.GetAxis("Back") > 0.3f)
-        {
-            insideLadder = false;
-            rb.useGravity = true;
-            StopCoroutine(TurnToTrap(0.7f));
-        }
-        if (insideLadder && climable)
-        {
-            transform.position += new Vector3(0, Input.GetAxis("Vertical"), 0) * 3* Time.deltaTime;
-        }
-        if (!insideLadder)
-        {
-            anim.SetBool("climbing", false);
-        }
-        if(Physics.Raycast(new Vector3(transform.position.x,transform.position.y + 0.6f, transform.position.z), transform.forward, 1f) && insideLadder)
-        {
-            enterStair = true;
-        }
-        else if(insideLadder&& enterStair)
-        {
-            Debug.Log("lerp");
-            climable = false;
-            insideLadder = false;
-            enterStair = false;
-            StartCoroutine(GoUpTrep());
-        }
-        Debug.DrawLine(new Vector3(transform.position.x, transform.position.y + 0.6f, transform.position.z), new Vector3(transform.position.x, transform.position.y + 0.5f, transform.position.z) + transform.forward * 1);
-        Debug.Log(insideLadder);
     }
     private void OnTriggerEnter(Collider other)
     {
@@ -74,20 +106,23 @@ public class Ladder : MonoBehaviour
         }*/
         if (other.gameObject.tag == "Trap")
         {
+            canClimb = true;
             insideLadder = true;
             rb.useGravity = false;
             climable = true;
             enterStair = false;
-            transform.position = new Vector3(other.gameObject.transform.position.x, transform.position.y, other.gameObject.transform.position.z) - other.gameObject.transform.forward * 0.5f;
+            Debug.Log("Stair");
+            //transform.position = new Vector3(other.gameObject.transform.position.x, transform.position.y, other.gameObject.transform.position.z) - other.gameObject.transform.forward * 0.5f;
             trap = other.gameObject;
             if (transform.position.y > other.gameObject.transform.position.y)
             {
                 climable = false;
-                transform.position = new Vector3(transform.position.x, transform.position.y - 0.8f,transform.position.z);
+                transform.position = new Vector3(transform.position.x, transform.position.y - 0.6f,transform.position.z) - other.gameObject.transform.forward * 0.14f;
             }
             else
             {
                 enterStair = true;
+                transform.position = transform.position + other.gameObject.transform.forward * 0.3f;
             }
             
             StartCoroutine(TurnToTrap(0.7f));
@@ -99,15 +134,16 @@ public class Ladder : MonoBehaviour
         {
             insideLadder = false;
             rb.useGravity = true;
-            if (transform.position.y > other.gameObject.transform.position.y)
+            if (transform.position.y > other.gameObject.transform.position.y&&enterStair)
             {
                 //rb.AddForce(new Vector3(0, 0.5f, 0) + transform.forward * 0.7f, ForceMode.Impulse);
+                StartCoroutine(GoUpTrep());
             }
             else
             {
                 //rb.AddForce(new Vector3(0, 0, 0) - transform.forward * 0.7f, ForceMode.Impulse);
             }
-            StopCoroutine(TurnToTrap(0.3f));
+           // StopAllCoroutines();
             enterStair = false;
         }
     }
@@ -119,7 +155,7 @@ public class Ladder : MonoBehaviour
         {
             f += t * Time.deltaTime;
             transform.rotation = Quaternion.Slerp(transform.rotation, trap.transform.rotation, f);
-            //cam.GetComponent<CameraMovement>().ChangeRot(transform.eulerAngles.y);
+            cam.GetComponent<CameraMovement>().ChangeRot(transform.eulerAngles.y);
             yield return new WaitForSeconds(0f);
             if (f >= 1)
             {
@@ -127,28 +163,55 @@ public class Ladder : MonoBehaviour
             }
         }
     }
+    IEnumerator makeClimb()
+    {
+        yield return new WaitForSeconds(0.4f);
+        climable = true;
+    }
     IEnumerator GoUpTrep()
     {
+        /*
+        bool b = true;
+        float f = 0;
+        while (b)
+        {
+            rb.useGravity = false;
+            f += Time.deltaTime;
+            transform.position = Vector3.Lerp(transform.position, transform.position + new Vector3(0,0.17f,0)+transform.forward*0.3f , f*0.3f);
+            //rb.constraints = RigidbodyConstraints.FreezeAll;
+            //cam.GetComponent<CameraMovement>().ChangeRot(transform.eulerAngles.y);
+            yield return new WaitForSeconds(0f);
+            if (f >= 1)
+            {
+                b = false;
+                rb.useGravity = true;
+            }
+        }*/
+        /*
         bool b = true;
         float timer = 0;
         
         while (timer < 2)
         {
-            transform.SetParent(child.transform);
+            //transform.SetParent(child.transform);
             rb.useGravity = false;
             timer +=Time.deltaTime;
                 transform.position += transform.up * 0.4f * Time.deltaTime;
-            
-                transform.position += transform.forward * 0.6f * Time.deltaTime;
+                transform.position += transform.forward * 0.3f * Time.deltaTime;
             
         }if(timer > 2)
         {
             rb.useGravity = true;
-        }
+        }*/
         yield return new WaitForSeconds(1f);
         Debug.Log("Stop");
+        anim.SetBool("hanging", false);
+        transform.position = hips.transform.position - new Vector3(0,0.2f,0)+transform.forward*0.4f;
+        anim.speed = 1;
+        rb.useGravity = true;
+        insideLadder = false;
         yield return new WaitForSeconds(0f);
-
+        
     }
     
     public bool isClimbing()
