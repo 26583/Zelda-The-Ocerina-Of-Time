@@ -33,7 +33,8 @@ public class CameraMovement : MonoBehaviour
 
             transform.rotation = Quaternion.Euler(new Vector3(transform.rotation.x, yRotate, transform.rotation.z));
             //transform.rotation = Quaternion.Lerp(transform.rotation, rotat.rotation, Time.time * 0.1f);
-            transform.position = Vector3.Lerp(transform.position,target.transform.position - transform.forward * distance + new Vector3(0, 1f, 0),Time.deltaTime*10);
+            transform.position = Vector3.Lerp(transform.position,target.transform.position - transform.forward * distance 
+            + new Vector3(0, 1f, 0),Time.deltaTime*10);
             RaycastHit hit;
 
             if (Physics.Raycast(target.transform.position + new Vector3(0, 1f, 0), -transform.forward, out hit, distance, layer))
